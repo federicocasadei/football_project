@@ -1,0 +1,359 @@
+----------------------------------------------------
+----- Documentation for football_project codes -----
+----------------------------------------------------
+
+
+The data analysis and simulations contained in this project are (quite) well separated in
+two topics: classification and entropy_ratio (see relative folders).
+This documentation will follow this separation, constituting a guide for the two topics separately.
+
+More details about the topics (with the theory and models behind them) can be found in the report.pdf
+file.
+
+
+
+-------------------------------------------------------------------------------------------------------------------
+
+
+
+-------------------------------------------------------
+Documentation for the classification procedure
+-------------------------------------------------------
+
+
+
+--------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------
+file functions.py:
+
+
+
+This file containes some functions used in the classification procedure
+(classification/classification.py) but which are also used for the entropy ratio analysis
+(entropy_ratio/entropy_ratio.py).
+
+
+
+--------------------------------------------------------------------------------------------------------------------
+function 'check_global_variables':
+
+arguments:
+
+	- global_variables:
+		must be a list of variables, each with a specific type. The number of variables
+		must be 9 and there are some requirements about their values (see below).
+
+This function is very specific for this project, because it has stringent requirements on
+the parameter passed. The goal is just to check that the global variables, used for the
+analysis, are acceptable and consistent. It is supposed to be used at the beginning of the
+code, just after the declaration of the global variables (then the other functions can avoid
+checks on the variables which they depend on).
+
+The global variables and their requirements are:
+
+0 ---> name of the first of the two teams within the classification will be carried out
+	 (must be a string)
+1 ---> name of the second of the two teams within the classification will be carried out
+	 (must be a string)
+2 ---> length of the pitch in meters (must be a positive float).
+3 ---> width of the pitch in meters (must be a positive float).
+4 ---> number of 'rows' of zones among the pitch, i.e. the number of zone that the pitch
+	 length is divided into (must be a positive int).
+5 ---> number of 'columns' of zones among the pitch, i.e. the number of zone that the pitch
+	 width is divided into (must be a positive int).
+6 ---> total number of zones in the pitch (must be a positive int and equal to the product
+	 of global_variables[4] and global_variables[5]).
+7 ---> length of a zone in % of the pitch (must be a positive float, not greater than
+	 100; it is defined as 100 / global_variables[4]).
+8 ---> width of a zone in % of the pitch (must be a positive float, not greater than
+	 100; it is defined as 100 / global_variables[5]).
+
+The functions raises some exception if some requirement is not satisfied, or return 0
+if everything is as acceptable.
+--------------------------------------------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------------------------------------------
+function 'zone':
+
+arguments:
+
+	- x: x-component of the position on the pitch (the x-axis is along the length of the
+		pitch). It must be expressed in % of the pitch length and must be a int or
+		a float in the interval [0;100].
+
+	- y: y-component of the position on the pitch (the y-axis is along the width of the
+		pitch). It must be expressed in % of the pitch width and must be a int or
+		a float in the interval [0;100].
+
+	- global_variables: the global variables used for the analysis. They are no checks
+		them, because they are supposed to be already verified in the function
+		'check_global_variables'.
+
+This function takes a 2D position on the pitch (in %, as the data are written in this way)
+and returns the number of the zone that point belong to. The global variables are needed
+because the algorithm depends on the length and width of the zones. If a point belong to a
+border between two zones, the returned zone is conventionally chosen to be the forward-right
+zone.
+
+The function returns the number of zone detected, after checking that it is in the correct
+range.
+--------------------------------------------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------------------------------------------
+function 'perc_to_len':
+
+arguments:
+
+	- perc: the % to be converted in a length (it must be a int in the interval [0;100]).
+
+	- factor: the multiplicative factor used. This is the length returned if perc is equal
+		to 100% (it must be a non-negative number).
+
+This function takes a % and return the corresponding length on the pitch. The factor argument
+is needed to know the 'full scale': it can be the length or the width of the pitch.
+
+The function returns the length (in meters) corresponding to perc % of factor.
+--------------------------------------------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------------------------------------------
+function 'create_pass_couples':
+
+arguments:
+
+	- team_name: the name of the team whose pass couples will be created (a string).
+
+	- teams: the teams dataset, needed to find the team id and then all the passes of that
+		team.
+
+	- events: the events dataset, where the passes (among all the other events) can be
+		found.
+
+	- global_variables: the global variables used for the analysis. They are no checks
+		them, because they are supposed to be already verified in the function
+		'check_global_variables'.
+
+This function creates a dataset containing all the couples of passes of a given team. First
+it finds the team id and then it uses it to select all the passes made by that particular
+team. To select consecutive passes, the function looks for passes made in the same match
+and in the same half. When it finds a couple of passes, it creates a dictionary where are
+stored the average length of the two passes, the angle between them, the time delay between
+them, the zones of the pitch where they start and end, a bool variable which tells the
+used whether that given couple of passes is the first of a chain or not and a label to
+distinguish between the two teams (which is 0 if the team is not within the two used for
+the classification). The dictionary is then stored in a list which constitute the dataset
+and can be used for the analysis.
+
+The function returns the list containing the couples of passes.
+--------------------------------------------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------
+
+
+
+--------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------
+file classification_tests.py:
+
+
+
+This file containes functions that test all the functions in the file 'functions.py'. They
+perform both positive and negative tests, using the pytest library to check if the right
+exception is raised in each case. They are supposed to be run to chack that the functions
+follow the wanted rules.
+
+Every function returns 0 if all the tests are passed, so this file should be executed and
+should not provide any output, especially errors or exceptions.
+--------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------
+
+
+
+--------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------
+file classification.py:
+
+
+
+This file makes use of the functions defined in the file 'functions.py' to perform a
+classification procedure between the teams Juventus and Napoli. To do this, a neural network
+is trained to discriminate between the two teams.
+
+First of all, the needed datsets are loaded; then the global variables are defined. Changing
+them, one could repeat the analysis with different number of zones, pitch length,... .
+Then, the global variables are checked using the 'check_global_variables' function.
+
+The function 'create_pass_couples' is used to build up the passes couples datasets for
+Juventus and Napoli; then the distributions of the variables used for the classification
+procedure are plotted to underline the differences between the two teams.
+
+In the following, the two datasets are merged together in a pandas dataframe; the useless
+variables are deleted (un-commenting some lines, here one could exclude other variables from
+the neural network training procedure, to see the effects). The 'target variable' is set to
+be the label, as required from the machine learning method.
+
+After that, the 'predictors' i.e. the columns with the variables used to train the neural
+network are selected and normalized. Using the function 'train_test_split' contained in
+'sklearn.model_selection', the variables are randomly split in a set used for the training
+part (80%) and one for the testing part (20%).
+
+Then a multi-layer perceptron (neural network) is trained, with three layers with 8 nodes
+each (this configuration can be changed by the parameter 'hidden_layer_sizes'). The parameter
+'activation' defines instead the activation function used for the nodes.
+
+The results are printed, in terms of confusion matrix and general performances of the
+classification (recall, accuracy,...). All these tools are taken from the 'sklearn' library.
+
+To have a more visual result, the ROC curve is plotted (the true positive rate and false
+positive rate are calculated, than the latter is translated in the true negative rate, just
+for convention). The area under the curve is then computed (using the function
+'sklearn.metrics.roc_auc_score').
+--------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------
+
+	
+
+
+
+-------------------------------------------------------
+Documentation for the entropy ratio analysis
+-------------------------------------------------------
+
+
+
+
+--------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------
+file functions_for_entropy_ratio.py
+
+
+
+This file containes some functions used in the entropy ratio analysis
+(entropy_ratio/entropy_ratio.py).
+
+
+
+--------------------------------------------------------------------------------------------------------------------
+function 'generate_couples':
+
+arguments:
+
+	- size: the number of possible states. If this function is used to mimic the dataset of
+		couple of passes of a team, it should be the number of zones in the pitch. It
+		must be a positive int.
+
+	- numbers: a matrix (of dimension size x size) which containes the number of
+		transitions between each couple of zone. This is just used to build up the
+		transition matrix, with all the probabilities to go from zone i to zone j, used
+		for the simulation. It must contain positive numbers.
+
+	- steps: the number of transitions that will be simulated. Here 'transition' refers to
+		a pass, i.e. the number of couples will be lower than this parameter. It must
+		be a positive int.
+
+	- new_rate: probability to perform a 'jump' and start a new chain of passes. This is
+		used to simulate the real couple of passes of the teams and must be a number in
+		the interval [0;1].
+
+This function is used to simulate couples of passes. The only difference with a Markov
+is that there is a certain probability to 'jump' to another state (zone) without having an
+actual transition between the two. It requires the number of transitions to estimate the
+transition probability, and return a dataset very similar to the one got from the function
+'create_pass_couples' (but with less informations, because for the entropy ratio analysis
+only the zones are needed); in this way the analysis can be somehow independent on the fact that
+the dataset comes form data or from a simulation.
+In the implementation, if the variable 'first_pass' is true (which depends on the jump
+probability and on a random number generation) a new couple is generated from scratch;
+otherwise, just the second pass of the couple is generated.
+
+The function returns a list containing all the couples of passes, in the form of
+dictionaries where the relevant informations are stored.
+
+--------------------------------------------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------------------------------------------
+function 'SR':
+
+arguments:
+
+	- couples_dataset: the dataset of couples of passes for which comupute the entropy
+		ratio (it must be a list).
+
+	- size: the number of possible states. It should be the total number of zones and be
+		consistent with the number of states of the dataset passed as 'couples_dataset'.
+
+This function, given the couples of passes of a team, computes the entropy ratio and the
+total entropyof that dataset.
+
+The function returns the entropy ratio, the total entropy and also the number of transitions
+between each zone, which can be used passing it to the function 'generate_couples' to
+generate accordingly to a certain team's transition probability.
+
+--------------------------------------------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------
+
+
+
+--------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------
+file entropy_ratio_tests.py:
+
+
+
+This file containes functions that test all the functions in the file
+'functions_for_entropy_ratio.py'. They perform both positive and negative tests, using the
+pytest library to check if the right exception is raised in each case. They are supposed
+to be run to check that the functions follow the wanted rules.
+
+Every function returns 0 if all the tests are passed, so this file should be executed and
+should not provide any output, especially errors or exceptions.
+--------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------
+
+
+
+--------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------
+file entropy_ratio.py:
+
+
+
+This file, using the functions defined in the files 'functions.py' and
+'functions_for_entropy_ratio.py', perform the entropy ratio analysis.
+
+After loaded the datasets, definined the global variables and checked their validity (using
+the function 'check_global_variables'), the fisrt thing done is simulate a Markov process
+for different number of steps to see the behavior of the entropy ratio (which is expected to
+approach 1). To do this, in addition to a Poisson distribution, the couples of passes of
+Juventus are created (with the function 'create_pass_couples') and its number of transitions
+between each zone is computed with the function 'SR'. The 'new_rate' parameter in the
+function 'generate_couples' is set to zero, to obtain a pure Markov process without jumps.
+
+After plotted the results and saved them, the procedure is repeated but using a jump
+probability of 0.3 (changing the value of the parameter 'new_rate'). The results are plotted
+and saved as well.
+
+At this point, a for loop all over the Serie A teams is performed, the couples of passes
+dataset for each of them is built and the entropy ratio is computed. In addition, for each
+of them a simulated dataset is created, as a Markov process but with the same jump
+probability as estimated by real data. Then, the variable eta is calculated for each team
+(just making the ratio) and the results are stored in a pandas dataframe.
+
+As a last thing, the chart of the teams is build and the parameter eta is scatter-plotted
+with the points and the goals, to look for possible correlations.
+--------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------
+
+
+
+( Also the file 'fuctions.py' is used for this analysis, see the documentation above )
+
+
+
+
+
+
+
+
